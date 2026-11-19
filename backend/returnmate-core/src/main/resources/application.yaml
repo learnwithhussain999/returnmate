@@ -7,9 +7,9 @@ spring:
     name: returnmate-core
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/returnmate
-    username: returnmate_user
-    password: local_dev_password
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/returnmate}
+    username: ${DB_USERNAME:returnmate_user}
+    password: ${DB_PASSWORD:local_dev_password}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -28,7 +28,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,mappings
   endpoint:
     health:
-      show-details: always
+      show-details: when_authorized

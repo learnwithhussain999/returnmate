@@ -1,0 +1,52 @@
+### Patch purchase amount
+### Patch purchase amount
+PATCH http://localhost:8080/api/v1/purchases/40aa3d92-8553-4331-8635-eb566d7625ec
+Content-Type: application/json
+Accept: application/json
+
+{
+  "purchaseAmount": 1049.99
+}
+
+###
+GET http://localhost:8080/actuator/mappings
+
+###
+### Update Purchase
+PUT http://localhost:8080/api/v1/purchases/40aa3d92-8553-4331-8635-eb566d7625ec
+Content-Type: application/json
+Accept: application/json
+
+{
+  "merchantName": "Amazon",
+  "productName": "Apple MacBook Air M5",
+  "purchaseDate": "2026-11-15",
+  "purchaseAmount": 1099.99,
+  "currency": "USD"
+}
+
+###
+GET http://localhost:8080/api/v1/purchases
+Accept: application/json
+
+###
+
+
+GET http://localhost:8080/api/v1/purchases/40aa3d92-8553-4331-8635-eb566d7625ec
+Accept: application/json
+
+
+###
+### Create Purchase
+POST http://localhost:8080/api/v1/purchases
+Content-Type: application/json
+
+{
+  "merchantName": "Amazon",
+  "productName": "Apple MacBook Air",
+  "purchaseDate": "2026-11-15",
+  "purchaseAmount": 999.99,
+  "currency": "USD"
+}
+
+<> 2026-11-19T110938.201.json
