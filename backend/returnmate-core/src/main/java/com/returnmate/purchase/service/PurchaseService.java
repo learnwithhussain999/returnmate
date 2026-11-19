@@ -8,6 +8,8 @@ import com.returnmate.purchase.exceptions.ResourceNotFoundException;
 import com.returnmate.purchase.mapper.PurchaseMapper;
 import com.returnmate.purchase.repository.PurchaseRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -35,8 +37,8 @@ public class PurchaseService {
     }
 
 
-    public List<PurchaseResponse> getAllPurchases(){
-        return purchaseRepository.findAll().stream().map(PurchaseMapper::toResponse).toList();
+    public Page<PurchaseResponse> getAllPurchases(Pageable pageable){
+        return purchaseRepository.findAll(pageable).map(PurchaseMapper::toResponse);
     }
 
     public PurchaseResponse getPurchaseById(UUID uuid){

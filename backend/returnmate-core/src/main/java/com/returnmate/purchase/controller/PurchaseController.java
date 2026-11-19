@@ -5,6 +5,10 @@
     import com.returnmate.purchase.dto.UpdatePurchasePatchRequest;
     import com.returnmate.purchase.service.PurchaseService;
     import jakarta.validation.Valid;
+    import org.springframework.data.domain.Page;
+    import org.springframework.data.domain.Pageable;
+    import org.springframework.data.domain.Sort;
+    import org.springframework.data.web.PageableDefault;
     import org.springframework.http.HttpStatus;
     import org.springframework.web.bind.annotation.*;
 
@@ -30,8 +34,13 @@
             return purchaseService.createPurchase(request);
         }
         @GetMapping
-        public List<PurchaseResponse> getAllPurchases(){
-            return purchaseService.getAllPurchases();
+        public Page<PurchaseResponse> getAllPurchases(@PageableDefault (
+                page = 0,
+                size =10,
+                sort = "purchaseDate",
+                direction = Sort.Direction.DESC
+        )Pageable pageable){
+            return purchaseService.getAllPurchases(pageable);
         }
 
 

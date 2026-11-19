@@ -1,3 +1,44 @@
+POST http://localhost:8080/api/v1/purchases
+Content-Type: application/json
+
+{
+  "merchantName": "Amazon",
+  "productName": "MacBook Air",
+  "purchaseDate": "invalid-date",
+  "purchaseAmount": 999.99,
+  "currency": "USD"
+}
+
+###
+POST http://localhost:8080/api/v1/purchases
+Content-Type: application/json
+
+{
+  "merchantName": "",
+  "productName": "MacBook Air",
+  "purchaseDate": "2026-11-19",
+  "purchaseAmount": 0,
+  "currency": "USD"
+}
+###
+POST http://localhost:8080/api/v1/purchases
+Content-Type: application/json
+
+{
+  "merchantName": "",
+  "productName": "MacBook Air",
+  "purchaseDate": "2026-11-19",
+  "purchaseAmount": 0,
+  "currency": "USD"
+}
+
+###
+GET http://localhost:8080/api/v1/purchases/00000000-0000-0000-0000-000000000001
+
+###
+GET http://localhost:8080/api/v1/purchases/11
+
+###
 ### Patch purchase amount
 ### Patch purchase amount
 PATCH http://localhost:8080/api/v1/purchases/40aa3d92-8553-4331-8635-eb566d7625ec
@@ -26,8 +67,8 @@ Accept: application/json
 }
 
 ###
-GET http://localhost:8080/api/v1/purchases
-Accept: application/json
+GET http://localhost:8080/api/v1/purchases?page=0&size=5
+    Accept: application/json
 
 ###
 
