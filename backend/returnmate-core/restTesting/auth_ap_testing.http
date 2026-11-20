@@ -1,11 +1,68 @@
+### Login - wrong password
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "user10@example.com",
+  "password": "WrongPassword@123"
+}
+
+###
+### Password shorter than 12 characters
+POST http://localhost:8080/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "user15@example.com",
+  "password": "Ab@123"
+}
+
+###
+### Missing special character
+POST http://localhost:8080/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "user14@example.com",
+  "password": "ReturnMate2026"
+}
+###
+### Missing number
+POST http://localhost:8080/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "user13@example.com",
+  "password": "ReturnMate@Test"
+}
+
+###
+### Missing lowercase
+POST http://localhost:8080/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "user12@example.com",
+  "password": "RETURNMATE@123"
+}
+###
+### Missing uppercase
+POST http://localhost:8080/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "user11@example.com",
+  "password": "returnmate@123"
+}
+
+###
 ### Register user
 POST http://localhost:8080/api/v1/auth/register
 Content-Type: application/json
 
 {
-  "name": "Test User",
-  "email": "testuser1@returnmate.com",
-  "password": "Test@12345989899"
+  "email": "user10@example.com",
+  "password": "ReturnMate@2026"
 }
 
 ### Login
@@ -13,9 +70,53 @@ POST http://localhost:8080/api/v1/auth/login
 Content-Type: application/json
 
 {
-  "email": "testuser1@returnmate.com",
-  "password": "Test@12345989899"
+  "email": "user10@example.com",
+  "password": "ReturnMate@2026"
 }
 > {%
     client.global.set("authToken", response.body.accessToken);
+%}
+
+### Register userA
+POST http://localhost:8080/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "usera@example.com",
+  "password": "ReturnMate@2026"
+}
+
+### Register userB
+POST http://localhost:8080/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "userb@example.com",
+  "password": "ReturnMate@2027"
+}
+
+### Login User A
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "usera@example.com",
+  "password": "ReturnMate@2026"
+}
+
+> {%
+    client.global.set("userAToken", response.body.accessToken);
+%}
+
+### Login User B
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "userb@example.com",
+  "password": "ReturnMate@2027"
+}
+
+> {%
+    client.global.set("userBToken", response.body.accessToken);
 %}

@@ -1,0 +1,126 @@
+
+### Read without JWT
+GET http://localhost:8080/api/v1/purchases
+### Create without JWT
+POST http://localhost:8080/api/v1/purchases
+Content-Type: application/json
+
+{
+  "merchantName": "Amazon",
+  "productName": "Keyboard",
+  "purchaseDate": "2026-11-20",
+  "purchaseAmount": 49.99,
+  "currency": "USD"
+}
+### Invalid amount
+POST http://localhost:8080/api/v1/purchases
+Authorization: Bearer {{userAToken}}
+Content-Type: application/json
+
+{
+  "merchantName": "Amazon",
+  "productName": "Keyboard",
+  "purchaseDate": "2026-11-20",
+  "purchaseAmount": -100,
+  "currency": "USD"
+}
+### User A - second page
+GET http://localhost:8080/api/v1/purchases?page=1&size=2&sort=purchaseDate,desc
+Authorization: Bearer {{userAToken}}
+### Get deleted purchase
+GET http://localhost:8080/api/v1/purchases/{{userAPurchaseId}}
+Authorization: Bearer {{userAToken}}
+### User A tries to delete User B's purchase
+DELETE http://localhost:8080/api/v1/purchases/{{userBPurchaseId}}
+Authorization: Bearer {{userAToken}}
+### Empty PATCH
+PATCH http://localhost:8080/api/v1/purchases/{{userAPurchaseId}}
+Authorization: Bearer {{userAToken}}
+Content-Type: application/json
+
+{}
+### User A patches own purchase
+PATCH http://localhost:8080/api/v1/purchases/{{userAPurchaseId}}
+Authorization: Bearer {{userAToken}}
+Content-Type: application/json
+
+{
+  "purchaseAmount": 999.99
+}
+### User A tries to update User B's purchase
+PUT http://localhost:8080/api/v1/purchases/{{userBPurchaseId}}
+Authorization: Bearer {{userAToken}}
+Content-Type: application/json
+
+{
+  "merchantName": "Amazon",
+  "productName": "Unauthorized Update",
+  "purchaseDate": "2026-11-20",
+  "purchaseAmount": 1.00,
+  "currency": "USD"
+}
+### User A updates own purchase
+PUT http://localhost:8080/api/v1/purchases/{{userAPurchaseId}}
+Authorization: Bearer {{userAToken}}
+Content-Type: application/json
+
+{
+  "merchantName": "Amazon",
+  "productName": "MacBook Air M5 - Updated",
+  "purchaseDate": "2026-11-20",
+  "purchaseAmount": 1099.99,
+  "currency": "USD"
+}
+
+### User B tries to access User A's purchase
+GET http://localhost:8080/api/v1/purchases/{{userAPurchaseId}}
+Authorization: Bearer {{userBToken}}
+
+###
+## Get purchases - User A
+GET http://localhost:8080/api/v1/purchases
+Authorization: Bearer {{userAToken}}
+
+### Get purchases - User B
+GET http://localhost:8080/api/v1/purchases
+Authorization: Bearer {{userBToken}}
+
+### User A tries to access User B's purchase
+GET http://localhost:8080/api/v1/purchases/{{userBPurchaseId}}
+Authorization: Bearer {{userAToken}}
+
+###
+### Create purchase - User A
+POST http://localhost:8080/api/v1/purchases
+Authorization: Bearer {{userAToken}}
+Content-Type: application/json
+
+{
+  "merchantName": "Amazon",
+  "productName": "MacBook Air M5",
+  "purchaseDate": "2026-11-20",
+  "purchaseAmount": 1049.99,
+  "currency": "USD"
+}
+
+> {%
+    client.global.set("userAPurchaseId", response.body.id);
+%}
+
+### Create purchase - User B
+POST http://localhost:8080/api/v1/purchases
+Authorization: Bearer {{userBToken}}
+Content-Type: application/json
+
+{
+  "merchantName": "Best Buy",
+  "productName": "Wireless Headphones",
+  "purchaseDate": "2026-11-20",
+  "purchaseAmount": 199.99,
+  "currency": "USD"
+}
+
+> {%
+    client.global.set("userBPurchaseId", response.body.id);
+%}
+
