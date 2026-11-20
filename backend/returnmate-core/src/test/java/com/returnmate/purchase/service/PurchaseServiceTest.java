@@ -1,11 +1,18 @@
+
 package com.returnmate.purchase.service;
 
 import com.returnmate.purchase.dto.CreatePurchaseRequest;
 import com.returnmate.purchase.dto.PurchaseResponse;
 import com.returnmate.purchase.entity.Purchase;
+import com.returnmate.purchase.entity.User;
+import com.returnmate.purchase.exceptions.ResourceNotFoundException;
 import com.returnmate.purchase.repository.PurchaseRepository;
+import com.returnmate.purchase.repository.UserRepository;
+import com.returnmate.purchase.security.AuthenticatedUser;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -16,23 +23,42 @@ import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class PurchaseServiceTest {
+class PurchaseServiceTest {
+
     @Mock
     private PurchaseRepository purchaseRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private PurchaseService purchaseService;
 
+    private final UUID userId =
+            UUID.fromString("9ded9065-a70a-4291-bfe6-e1e929bacd3a");
+
+    private final AuthenticatedUser authenticatedUser =
+            new AuthenticatedUser(
+                    userId,
+                    "testuser1@returnmate.com"
+            );
+
+    private User createTestUser() {
+        return new User(
+                "testuser1@returnmate.com",
+                "encodedPassword"
+        );
+    }
+
     @Test
     void createPurchase_shouldSaveAndReturnPurchase() {
 
-        // Arrange: Prepare request data
+        // Arrange
         CreatePurchaseRequest request = new CreatePurchaseRequest(
                 "Amazon",
                 "MacBook Air M5",
@@ -41,15 +67,22 @@ public class PurchaseServiceTest {
                 "USD"
         );
 
-        // Mock repository behavior
+        User user = createTestUser();
+
+        when(userRepository.findById(userId))
+                .thenReturn(Optional.of(user));
+
         when(purchaseRepository.save(any(Purchase.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Act: Execute service method
+        // Act
         PurchaseResponse response =
-                purchaseService.createPurchase(request);
+                purchaseService.createPurchase(
+                        request,
+                        authenticatedUser
+                );
 
-        // Assert: Verify response
+        // Assert
         assertNotNull(response);
         assertEquals("Amazon", response.merchantName());
         assertEquals("MacBook Air M5", response.productName());
@@ -59,7 +92,7 @@ public class PurchaseServiceTest {
         );
         assertEquals("USD", response.currency());
 
-        // Verify repository interaction
+        // Verify repository interactions
         ArgumentCaptor<Purchase> captor =
                 ArgumentCaptor.forClass(Purchase.class);
 
@@ -70,10 +103,9 @@ public class PurchaseServiceTest {
 
         assertEquals("Amazon", savedPurchase.getMerchantName());
         assertEquals("MacBook Air M5", savedPurchase.getProductName());
-        assertEquals(
-                new BigDecimal("1049.99"),
-                savedPurchase.getPurchaseAmount()
-        );
+
+        verify(userRepository, times(1))
+                .findById(userId);
     }
 
     @Test
@@ -90,12 +122,17 @@ public class PurchaseServiceTest {
                 "USD"
         );
 
-        when(purchaseRepository.findById(purchaseId))
-                .thenReturn(Optional.of(purchase));
+        when(purchaseRepository.findByIdAndUser_Id(
+                purchaseId,
+                userId
+        )).thenReturn(Optional.of(purchase));
 
         // Act
         PurchaseResponse response =
-                purchaseService.getPurchaseById(purchaseId);
+                purchaseService.getPurchaseById(
+                        purchaseId,
+                        authenticatedUser
+                );
 
         // Assert
         assertNotNull(response);
@@ -107,8 +144,30 @@ public class PurchaseServiceTest {
         );
 
         verify(purchaseRepository, times(1))
-                .findById(purchaseId);
+                .findByIdAndUser_Id(purchaseId, userId);
     }
 
+    @Test
+    void getPurchaseById_shouldThrowExceptionWhenPurchaseDoesNotBelongToUser() {
 
+        // Arrange
+        UUID purchaseId = UUID.randomUUID();
+
+        when(purchaseRepository.findByIdAndUser_Id(
+                purchaseId,
+                userId
+        )).thenReturn(Optional.empty());
+
+        // Act and Assert
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> purchaseService.getPurchaseById(
+                        purchaseId,
+                        authenticatedUser
+                )
+        );
+
+        verify(purchaseRepository, times(1))
+                .findByIdAndUser_Id(purchaseId, userId);
+    }
 }

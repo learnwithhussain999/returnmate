@@ -17,7 +17,11 @@ public class Purchase {
     @UuidGenerator
     private UUID id;
 
-    @Column(name="merchant_name",nullable=false,length=15)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(name="merchant_name",nullable=false,length=150)
     private String merchantName;
 
     @Column(name="product_name",nullable = false,length =255)
@@ -142,6 +146,9 @@ public class Purchase {
         if (request.currency() != null) {
             this.currency = request.currency();
         }
+    }
+    public void assignTo(User user) {
+        this.user = user;
     }
 
 }

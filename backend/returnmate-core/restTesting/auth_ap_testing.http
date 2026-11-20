@@ -1,0 +1,21 @@
+### Register user
+POST http://localhost:8080/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "name": "Test User",
+  "email": "testuser1@returnmate.com",
+  "password": "Test@12345989899"
+}
+
+### Login
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "testuser1@returnmate.com",
+  "password": "Test@12345989899"
+}
+> {%
+    client.global.set("authToken", response.body.accessToken);
+%}

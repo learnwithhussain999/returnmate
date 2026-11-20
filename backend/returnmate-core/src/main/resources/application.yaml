@@ -35,3 +35,8 @@ management:
   endpoint:
     health:
       show-details: when_authorized
+
+app:
+  jwt:
+    secret: ${JWT_SECRET_BASE64}
+    expiration-ms: ${JWT_EXPIRATION_MS:900000}
