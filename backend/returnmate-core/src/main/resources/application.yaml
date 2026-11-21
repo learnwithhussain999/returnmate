@@ -40,3 +40,8 @@ app:
   jwt:
     secret: ${JWT_SECRET_BASE64}
     expiration-ms: ${JWT_EXPIRATION_MS:900000}
+  crypto:
+    # Master key for encrypting mailbox tokens. Generate with: openssl rand -base64 32
+    current-key-id: ${TOKEN_KEK_ID:k1}
+    keys:
+      k1: ${TOKEN_KEK_BASE64:}

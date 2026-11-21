@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spring Boot's default console logging, with two converters swapped for masking ones
+  (design doc safeguard F3):
+    %m / %msg / %message  ->  MaskingMessageConverter   (the log message)
+    %wEx                  ->  MaskingThrowableConverter (stack traces)
+
+  The "-spring" suffix lets Spring Boot load this file itself, after reading
+  application.yaml, so logging.level.* settings still work.
+
+  Order matters: our conversionRules come AFTER defaults.xml, so they replace its wEx rule.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <conversionRule conversionWord="m" class="com.returnmate.privacy.logging.MaskingMessageConverter"/>
+    <conversionRule conversionWord="msg" class="com.returnmate.privacy.logging.MaskingMessageConverter"/>
+    <conversionRule conversionWord="message" class="com.returnmate.privacy.logging.MaskingMessageConverter"/>
+    <conversionRule conversionWord="wEx" class="com.returnmate.privacy.logging.MaskingThrowableConverter"/>
+
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>
