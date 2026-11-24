@@ -41,6 +41,22 @@ public class Purchase {
     @Column(name = "order_number", length = 100)
     private String orderNumber;
 
+    /** When it arrived. Return windows count from here when known. */
+    @Column(name = "delivery_date")
+    private LocalDate deliveryDate;
+
+    /** A known store ('amazon'), or null if we don't have its policy. */
+    @Column(name = "store_code", length = 40)
+    private String storeCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "item_category", nullable = false, length = 30)
+    private ItemCategory itemCategory = ItemCategory.GENERAL;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source", nullable = false, length = 10)
+    private PurchaseSource source = PurchaseSource.MANUAL;
+
     @Column(name = "return_deadline")
     private LocalDate returnDeadline;
 
@@ -135,6 +151,53 @@ public class Purchase {
         return returnStatus;
     }
 
+    public LocalDate getDeliveryDate() {
+        return deliveryDate;
+    }
+
+    public String getStoreCode() {
+        return storeCode;
+    }
+
+    public ItemCategory getItemCategory() {
+        return itemCategory;
+    }
+
+    public PurchaseSource getSource() {
+        return source;
+    }
+
+    // ------------------------------------------------------------ store policy inputs
+
+    public void setDeliveryDate(LocalDate deliveryDate) {
+        if (deliveryDate != null && deliveryDate.isBefore(purchaseDate)) {
+            throw new IllegalArgumentException("Delivery date cannot be before the purchase date");
+        }
+        this.deliveryDate = deliveryDate;
+    }
+
+    /** Null means "no special category". */
+    public void setItemCategory(ItemCategory itemCategory) {
+        this.itemCategory = itemCategory == null ? ItemCategory.GENERAL : itemCategory;
+    }
+
+    /** The service checks the code against the store catalogue before calling this. */
+    public void setStoreCode(String storeCode) {
+        this.storeCode = storeCode;
+    }
+
+    /**
+     * True if the deadline came from a store's policy (or there is none yet), so it should
+     * be worked out again when the store, category or dates change. A deadline the user
+     * typed, or one printed on the receipt, is theirs: we never overwrite it.
+     */
+    public boolean deadlineFollowsStorePolicy() {
+        return deadlineSource == null
+                || deadlineSource == DeadlineSource.MERCHANT_POLICY
+                || deadlineSource == DeadlineSource.HOLIDAY_EXTENSION
+                || deadlineSource == DeadlineSource.DEFAULT_WINDOW;
+    }
+
     // ------------------------------------------------------------ return tracking
 
     /**
@@ -194,6 +257,8 @@ public class Purchase {
             String merchantName,
             String productName,
             LocalDate purchaseDate,
+            LocalDate deliveryDate,
+            ItemCategory itemCategory,
             BigDecimal purchaseAmount,
             String currency) {
 
@@ -204,6 +269,8 @@ public class Purchase {
         this.merchantName = merchantName;
         this.productName = productName;
         this.purchaseDate = purchaseDate;
+        setDeliveryDate(deliveryDate);
+        setItemCategory(itemCategory);
         this.purchaseAmount = purchaseAmount;
         this.currency = currency;
     }
@@ -215,15 +282,25 @@ public class Purchase {
                 && request.currency() == null
                 && request.orderNumber() == null
                 && request.returnDeadline() == null
-                && request.returnStatus() == null) {
+                && request.returnStatus() == null
+                && request.deliveryDate() == null
+                && request.storeCode() == null
+                && request.itemCategory() == null) {
 
             throw new IllegalArgumentException(
                     "At least one field must be provided for update");
         }
         LocalDate newPurchaseDate = request.purchaseDate() != null ? request.purchaseDate() : this.purchaseDate;
-        LocalDate newDeadline = request.returnDeadline() != null ? request.returnDeadline() : this.returnDeadline;
+        // A store-policy deadline is worked out again after this patch (PurchaseService),
+        // so only the user's own deadline has to agree with a new purchase date.
+        LocalDate newDeadline = request.returnDeadline() != null ? request.returnDeadline()
+                : deadlineFollowsStorePolicy() ? null : this.returnDeadline;
         if (newDeadline != null && newDeadline.isBefore(newPurchaseDate)) {
             throw new IllegalArgumentException("Return deadline cannot be before the purchase date");
+        }
+        LocalDate newDeliveryDate = request.deliveryDate() != null ? request.deliveryDate() : this.deliveryDate;
+        if (newDeliveryDate != null && newDeliveryDate.isBefore(newPurchaseDate)) {
+            throw new IllegalArgumentException("Delivery date cannot be before the purchase date");
         }
 
         if (request.orderNumber() != null) {
@@ -243,6 +320,14 @@ public class Purchase {
 
         if (request.purchaseDate() != null) {
             this.purchaseDate = request.purchaseDate();
+        }
+
+        if (request.deliveryDate() != null) {
+            this.deliveryDate = request.deliveryDate();
+        }
+
+        if (request.itemCategory() != null) {
+            this.itemCategory = request.itemCategory();
         }
 
         if (request.purchaseAmount() != null) {

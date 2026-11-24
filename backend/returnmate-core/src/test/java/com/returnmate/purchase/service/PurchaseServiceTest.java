@@ -12,7 +12,11 @@ import com.returnmate.purchase.security.AuthenticatedUser;
 
 import com.returnmate.purchase.dto.UpdatePurchasePatchRequest;
 import com.returnmate.purchase.entity.DeadlineSource;
+import com.returnmate.purchase.entity.ItemCategory;
 import com.returnmate.purchase.entity.ReturnStatus;
+import com.returnmate.purchase.policy.DeadlineService;
+import com.returnmate.purchase.policy.StorePolicyService;
+import com.returnmate.purchase.policy.TestPolicies;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,7 +56,9 @@ class PurchaseServiceTest {
     void setUp() {
         // Built by hand instead of @InjectMocks: Mockito would pass null for the Clock,
         // because a Clock isn't a @Mock.
-        purchaseService = new PurchaseService(purchaseRepository, userRepository, fixedClock);
+        // The real store logic with hand-made policies: it's pure, so no need to mock it.
+        purchaseService = new PurchaseService(purchaseRepository, userRepository,
+                new StorePolicyService(TestPolicies.ALL), new DeadlineService(), fixedClock);
     }
 
     private final UUID userId =
@@ -191,7 +197,20 @@ class PurchaseServiceTest {
 
     private CreatePurchaseRequest requestWith(LocalDate deadline, Integer windowDays) {
         return new CreatePurchaseRequest("Amazon", "Sony WH-1000XM5", LocalDate.of(2026, 11, 20),
-                new BigDecimal("348.00"), "USD", "112-4471893-1234567", deadline, windowDays);
+                new BigDecimal("348.00"), "USD", "112-4471893-1234567", deadline, windowDays, null, null, null);
+    }
+
+    private CreatePurchaseRequest storeRequest(String merchant, String storeCode, ItemCategory category,
+                                               LocalDate purchased, LocalDate delivered) {
+        return new CreatePurchaseRequest(merchant, "Item", purchased, new BigDecimal("99.00"), "USD",
+                null, null, null, delivered, storeCode, category);
+    }
+
+    private static UpdatePurchasePatchRequest patch(LocalDate purchaseDate, LocalDate returnDeadline,
+                                                    ReturnStatus status, LocalDate deliveryDate,
+                                                    String storeCode, ItemCategory category) {
+        return new UpdatePurchasePatchRequest(null, null, purchaseDate, null, null, null,
+                returnDeadline, status, deliveryDate, storeCode, category);
     }
 
     private PurchaseResponse create(CreatePurchaseRequest request) {
@@ -221,9 +240,11 @@ class PurchaseServiceTest {
     }
 
     @Test
-    void createPurchase_withoutDeadline_hasNoCountdown() {
-        PurchaseResponse response = create(requestWith(null, null));
+    void createPurchase_unknownStoreWithoutDeadline_hasNoCountdown() {
+        // Design doc: "never guess a deadline". The app asks the user instead.
+        PurchaseResponse response = create(storeRequest("Corner Shop", null, null, LocalDate.of(2026, 11, 20), null));
 
+        assertNull(response.storeCode());
         assertNull(response.returnDeadline());
         assertNull(response.deadlineSource());
         assertNull(response.daysUntilDeadline());
@@ -253,8 +274,7 @@ class PurchaseServiceTest {
         when(purchaseRepository.findByIdAndUser_Id(id, userId)).thenReturn(Optional.of(purchase));
         when(purchaseRepository.save(any(Purchase.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdatePurchasePatchRequest markReturned = new UpdatePurchasePatchRequest(
-                null, null, null, null, null, null, null, ReturnStatus.RETURNED);
+        UpdatePurchasePatchRequest markReturned = patch(null, null, ReturnStatus.RETURNED, null, null, null);
         PurchaseResponse response = purchaseService.patchPurchaseById(id, markReturned, authenticatedUser);
 
         assertEquals(ReturnStatus.RETURNED, response.returnStatus());
@@ -269,8 +289,7 @@ class PurchaseServiceTest {
         UUID id = UUID.randomUUID();
         when(purchaseRepository.findByIdAndUser_Id(id, userId)).thenReturn(Optional.of(purchase));
 
-        UpdatePurchasePatchRequest moveDate = new UpdatePurchasePatchRequest(
-                null, null, LocalDate.of(2026, 12, 5), null, null, null, null, null);
+        UpdatePurchasePatchRequest moveDate = patch(LocalDate.of(2026, 12, 5), null, null, null, null, null);
 
         assertThrows(IllegalArgumentException.class,
                 () -> purchaseService.patchPurchaseById(id, moveDate, authenticatedUser));
@@ -292,5 +311,132 @@ class PurchaseServiceTest {
 
         assertEquals(LocalDate.of(2026, 12, 20), response.returnDeadline());
         assertEquals(DeadlineSource.USER_ENTERED, response.deadlineSource());
+    }
+
+    // ------------------------------------------------------------ store policies
+
+    @Test
+    void knownMerchantName_getsTheStorePolicyDeadline() {
+        // "Amazon.com" is recognised; bought Sep 1, delivered Sep 3 -> 30 days from delivery.
+        PurchaseResponse response = create(storeRequest("Amazon.com", null, null,
+                LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 3)));
+
+        assertEquals("amazon", response.storeCode());
+        assertEquals(LocalDate.of(2026, 10, 3), response.returnDeadline());
+        assertEquals(DeadlineSource.MERCHANT_POLICY, response.deadlineSource());
+        assertEquals(LocalDate.of(2026, 9, 3), response.deliveryDate());
+    }
+
+    @Test
+    void chosenStoreAndCategory_holidayExtensionApplies() {
+        PurchaseResponse response = create(storeRequest("Amazon", "amazon", ItemCategory.APPLE,
+                LocalDate.of(2026, 11, 20), null));
+
+        assertEquals(ItemCategory.APPLE, response.itemCategory());
+        assertEquals(LocalDate.of(2027, 1, 15), response.returnDeadline());
+        assertEquals(DeadlineSource.HOLIDAY_EXTENSION, response.deadlineSource());
+    }
+
+    @Test
+    void userDeadlineWinsOverTheStorePolicy() {
+        PurchaseResponse response = create(requestWith(LocalDate.of(2026, 11, 25), null)); // merchant "Amazon"
+
+        assertEquals("amazon", response.storeCode());
+        assertEquals(LocalDate.of(2026, 11, 25), response.returnDeadline());
+        assertEquals(DeadlineSource.USER_ENTERED, response.deadlineSource());
+    }
+
+    @Test
+    void returnWindowCountsFromDeliveryWhenKnown() {
+        CreatePurchaseRequest request = new CreatePurchaseRequest("Corner Shop", "Lamp", LocalDate.of(2026, 11, 1),
+                new BigDecimal("40.00"), "USD", null, null, 10, LocalDate.of(2026, 11, 5), null, null);
+
+        assertEquals(LocalDate.of(2026, 11, 15), create(request).returnDeadline());
+    }
+
+    @Test
+    void storeWithNoFixedLimit_hasNoDeadline() {
+        PurchaseResponse response = create(storeRequest("Costco", null, null, LocalDate.of(2026, 11, 20), null));
+
+        assertEquals("costco", response.storeCode());
+        assertNull(response.returnDeadline());
+    }
+
+    @Test
+    void unknownStoreCode_isRejected() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(createTestUser()));
+        CreatePurchaseRequest request = storeRequest("IKEA", "ikea", null, LocalDate.of(2026, 11, 20), null);
+
+        assertThrows(IllegalArgumentException.class, () -> purchaseService.createPurchase(request, authenticatedUser));
+        verify(purchaseRepository, never()).save(any());
+    }
+
+    @Test
+    void newPurchasesAreManual() {
+        assertEquals(com.returnmate.purchase.entity.PurchaseSource.MANUAL, create(requestWith(null, null)).source());
+    }
+
+    private Purchase existing(String merchant, String storeCode, LocalDate purchased) {
+        Purchase purchase = new Purchase(merchant, "Item", purchased, new BigDecimal("99.00"), "USD");
+        purchase.setStoreCode(storeCode);
+        return purchase;
+    }
+
+    private PurchaseResponse patchExisting(Purchase purchase, UpdatePurchasePatchRequest request) {
+        UUID id = UUID.randomUUID();
+        when(purchaseRepository.findByIdAndUser_Id(id, userId)).thenReturn(Optional.of(purchase));
+        when(purchaseRepository.save(any(Purchase.class))).thenAnswer(inv -> inv.getArgument(0));
+        return purchaseService.patchPurchaseById(id, request, authenticatedUser);
+    }
+
+    @Test
+    void patchDeliveryDate_recalculatesAPolicyDeadline() {
+        Purchase purchase = existing("Amazon", "amazon", LocalDate.of(2026, 9, 1));
+        purchase.setReturnDeadline(LocalDate.of(2026, 10, 1), DeadlineSource.MERCHANT_POLICY);
+
+        PurchaseResponse response = patchExisting(purchase, patch(null, null, null, LocalDate.of(2026, 9, 10), null, null));
+
+        assertEquals(LocalDate.of(2026, 10, 10), response.returnDeadline());
+    }
+
+    @Test
+    void patchPurchaseDate_pastAPolicyDeadline_recalculatesInsteadOfFailing() {
+        Purchase purchase = existing("Amazon", "amazon", LocalDate.of(2026, 9, 1));
+        purchase.setReturnDeadline(LocalDate.of(2026, 10, 1), DeadlineSource.MERCHANT_POLICY);
+
+        PurchaseResponse response = patchExisting(purchase, patch(LocalDate.of(2026, 10, 5), null, null, null, null, null));
+
+        assertEquals(LocalDate.of(2026, 11, 4), response.returnDeadline());
+    }
+
+    @Test
+    void patchDeliveryDate_leavesTheUsersOwnDeadlineAlone() {
+        Purchase purchase = existing("Amazon", "amazon", LocalDate.of(2026, 9, 1));
+        purchase.setReturnDeadline(LocalDate.of(2026, 9, 20), DeadlineSource.USER_ENTERED);
+
+        PurchaseResponse response = patchExisting(purchase, patch(null, null, null, LocalDate.of(2026, 9, 10), null, null));
+
+        assertEquals(LocalDate.of(2026, 9, 20), response.returnDeadline());
+        assertEquals(DeadlineSource.USER_ENTERED, response.deadlineSource());
+    }
+
+    @Test
+    void patchStoreCode_givesAnUnknownStorePurchaseADeadline() {
+        Purchase purchase = existing("BB Store #42", null, LocalDate.of(2026, 9, 1));
+
+        PurchaseResponse response = patchExisting(purchase, patch(null, null, null, null, "bestbuy", null));
+
+        assertEquals("bestbuy", response.storeCode());
+        assertEquals(LocalDate.of(2026, 9, 16), response.returnDeadline());
+    }
+
+    @Test
+    void patchDeliveryBeforePurchase_isRejected() {
+        Purchase purchase = existing("Amazon", "amazon", LocalDate.of(2026, 9, 10));
+        UUID id = UUID.randomUUID();
+        when(purchaseRepository.findByIdAndUser_Id(id, userId)).thenReturn(Optional.of(purchase));
+
+        assertThrows(IllegalArgumentException.class, () -> purchaseService.patchPurchaseById(id,
+                patch(null, null, null, LocalDate.of(2026, 9, 1), null, null), authenticatedUser));
     }
 }

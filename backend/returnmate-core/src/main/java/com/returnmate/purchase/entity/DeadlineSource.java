@@ -9,6 +9,8 @@ public enum DeadlineSource {
     RECEIPT,
     /** The store's known return policy (e.g. 30 days from purchase). */
     MERCHANT_POLICY,
+    /** The store's holiday extension gave a later date than its normal policy. */
+    HOLIDAY_EXTENSION,
     /** No policy found; we assumed a standard window. The user should check it. */
     DEFAULT_WINDOW,
     /** Typed in or chosen by the user. */

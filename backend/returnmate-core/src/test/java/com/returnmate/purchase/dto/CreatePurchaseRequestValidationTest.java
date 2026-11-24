@@ -36,7 +36,7 @@ class CreatePurchaseRequestValidationTest {
 
     private Set<String> invalidProperties(LocalDate deadline, Integer windowDays) {
         CreatePurchaseRequest request = new CreatePurchaseRequest("Amazon", "Headphones",
-                LocalDate.of(2026, 11, 20), new BigDecimal("348.00"), "USD", null, deadline, windowDays);
+                LocalDate.of(2026, 11, 20), new BigDecimal("348.00"), "USD", null, deadline, windowDays, null, null, null);
         return validator.validate(request).stream()
                 .map(ConstraintViolation::getPropertyPath)
                 .map(Object::toString)

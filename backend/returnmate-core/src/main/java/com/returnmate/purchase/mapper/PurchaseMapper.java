@@ -2,7 +2,6 @@ package com.returnmate.purchase.mapper;
 
 import com.returnmate.purchase.dto.CreatePurchaseRequest;
 import com.returnmate.purchase.dto.PurchaseResponse;
-import com.returnmate.purchase.entity.DeadlineSource;
 import com.returnmate.purchase.entity.Purchase;
 
 import java.time.LocalDate;
@@ -20,19 +19,11 @@ public final class PurchaseMapper {
                 request.purchaseAmount(),
                 request.currency()
         );
+        purchase.setDeliveryDate(request.deliveryDate());
+        purchase.setItemCategory(request.itemCategory());
         purchase.setOrderNumber(request.orderNumber());
-        applyDeadline(purchase, request);
+        // The store and deadline need the store catalogue, so PurchaseService sets them.
         return purchase;
-    }
-
-    /** A deadline the user typed or chose a window for is USER_ENTERED. */
-    public static void applyDeadline(Purchase purchase, CreatePurchaseRequest request) {
-        LocalDate deadline = request.resolveReturnDeadline();
-        if (deadline == null) {
-            purchase.clearReturnDeadline();
-        } else {
-            purchase.setReturnDeadline(deadline, DeadlineSource.USER_ENTERED);
-        }
     }
 
     /**
@@ -43,8 +34,11 @@ public final class PurchaseMapper {
         return new PurchaseResponse(
                 purchase.getId(),
                 purchase.getMerchantName(),
+                purchase.getStoreCode(),
                 purchase.getProductName(),
+                purchase.getItemCategory(),
                 purchase.getPurchaseDate(),
+                purchase.getDeliveryDate(),
                 purchase.getPurchaseAmount(),
                 purchase.getCurrency(),
                 purchase.getOrderNumber(),
@@ -53,6 +47,7 @@ public final class PurchaseMapper {
                 purchase.getReturnStatus(),
                 purchase.daysUntilDeadline(today),
                 purchase.isExpired(today),
+                purchase.getSource(),
                 purchase.getCreatedAt(),
                 purchase.getUpdatedAt()
         );
