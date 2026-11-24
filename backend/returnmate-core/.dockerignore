@@ -1,0 +1,9 @@
+# Keep the build context small and never send local secrets or build output to Docker.
+target/
+.idea/
+*.iml
+.git/
+restTesting/
+.env
+*.env
+HELP.md

@@ -56,7 +56,10 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.GET,
-                                "/actuator/health"
+                                "/actuator/health",
+                                // Kubernetes liveness/readiness probes call these without a token.
+                                "/actuator/health/liveness",
+                                "/actuator/health/readiness"
                         ).permitAll()
 
                         .anyRequest().authenticated()

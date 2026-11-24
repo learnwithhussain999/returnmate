@@ -1,0 +1,6 @@
+# A namespace groups everything ReturnMate runs, so it can be listed, limited or
+# deleted together without touching anything else in the cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: returnmate
