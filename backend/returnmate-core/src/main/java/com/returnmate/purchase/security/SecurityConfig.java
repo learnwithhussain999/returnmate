@@ -50,12 +50,16 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/v1/auth/register",
-                                "/api/v1/auth/login"
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/google"
                         ).permitAll()
 
                         .requestMatchers(
                                 HttpMethod.GET,
-                                "/actuator/health"
+                                "/actuator/health",
+                                // Kubernetes liveness/readiness probes call these without a token.
+                                "/actuator/health/liveness",
+                                "/actuator/health/readiness"
                         ).permitAll()
 
                         .anyRequest().authenticated()

@@ -1,5 +1,6 @@
 package com.returnmate.purchase.exceptions;
 
+import com.returnmate.purchase.security.google.GoogleSignInNotConfiguredException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -151,15 +152,37 @@ public class GlobalExceptionHandler {
             BadCredentialsException exception,
             HttpServletRequest request) {
 
+        // Password login keeps its generic message; Google sign-in messages say what to fix.
+        String message = request.getRequestURI().endsWith("/auth/google")
+                ? exception.getMessage()
+                : "Invalid email or password";
+
         ErrorResponse response = new ErrorResponse(
                 Instant.now(),
                 HttpStatus.UNAUTHORIZED.value(),
                 HttpStatus.UNAUTHORIZED.getReasonPhrase(),
-                "Invalid email or password",
+                message,
                 request.getRequestURI(),
                 Map.of()
         );
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
+
+    // 503 - Google sign-in switched off (no GOOGLE_CLIENT_ID)
+    @ExceptionHandler(GoogleSignInNotConfiguredException.class)
+    public ResponseEntity<ErrorResponse> handleGoogleNotConfigured(
+            GoogleSignInNotConfiguredException exception,
+            HttpServletRequest request) {
+
+        ErrorResponse response = new ErrorResponse(
+                Instant.now(),
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                HttpStatus.SERVICE_UNAVAILABLE.getReasonPhrase(),
+                exception.getMessage(),
+                request.getRequestURI(),
+                Map.of()
+        );
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
     }
 }

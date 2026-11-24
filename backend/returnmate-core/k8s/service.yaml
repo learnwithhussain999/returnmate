@@ -1,0 +1,16 @@
+# A stable internal address for the app pods. Pods come and go (new versions, restarts)
+# with new IPs; the Service finds the ready ones by label and spreads traffic across them.
+# ClusterIP = reachable only inside the cluster. Public access comes from the Ingress.
+apiVersion: v1
+kind: Service
+metadata:
+  name: returnmate-core
+  namespace: returnmate
+spec:
+  type: ClusterIP
+  selector:
+    app: returnmate-core
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

@@ -1,10 +1,16 @@
 
 server:
   port: 8080
+  # On shutdown (e.g. Kubernetes replacing a pod), finish in-flight requests first.
+  shutdown: graceful
+  # Behind a load balancer: trust its X-Forwarded-* headers for the real scheme/host.
+  forward-headers-strategy: framework
 
 spring:
   application:
     name: returnmate-core
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/returnmate}
@@ -15,7 +21,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    # Handy locally; the Kubernetes deployment turns it off (JPA_SHOW_SQL=false).
+    show-sql: ${JPA_SHOW_SQL:true}
     properties:
       hibernate:
         format_sql: true
@@ -31,12 +38,24 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,mappings
+        # Locally also "mappings"; in Kubernetes only health (MANAGEMENT_ENDPOINTS=health).
+        include: ${MANAGEMENT_ENDPOINTS:health,info,mappings}
   endpoint:
     health:
       show-details: when_authorized
+      # /actuator/health/liveness and /readiness, used by Kubernetes probes.
+      probes:
+        enabled: true
 
 app:
   jwt:
     secret: ${JWT_SECRET_BASE64}
     expiration-ms: ${JWT_EXPIRATION_MS:900000}
+  google:
+    # OAuth client id from Google Cloud Console (public, not a secret). Empty = Google sign-in off.
+    client-id: ${GOOGLE_CLIENT_ID:}
+  crypto:
+    # Master key for encrypting mailbox tokens. Generate with: openssl rand -base64 32
+    current-key-id: ${TOKEN_KEK_ID:k1}
+    keys:
+      k1: ${TOKEN_KEK_BASE64:}

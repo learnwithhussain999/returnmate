@@ -1,0 +1,95 @@
+# The Deployment keeps the requested number of app pods running, replaces them when
+# they crash, and rolls out new versions one pod at a time.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: returnmate-core
+  namespace: returnmate
+  labels:
+    app: returnmate-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: returnmate-core
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0   # never take the old pod down before the new one is ready
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: returnmate-core
+    spec:
+      terminationGracePeriodSeconds: 40
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          # Replaced by deploy steps with the real Artifact Registry path and version tag.
+          image: REGION-docker.pkg.dev/PROJECT_ID/returnmate/returnmate-core:TAG
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: returnmate-core-config
+            - secretRef:
+                name: returnmate-core-secrets
+
+          # Autopilot bills for what a pod REQUESTS, so these numbers are the bill.
+          # Memory limit = request: the JVM sizes its heap from the limit (75%).
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              memory: 1Gi
+
+          # Startup: allow up to 2.5 minutes for the first boot (Flyway migrations).
+          # Liveness/readiness checks don't start until this one passes.
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          # Liveness: "is the app stuck?" Failing restarts the container.
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          # Readiness: "can it take traffic?" Failing only removes it from the Service.
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 3
+
+          lifecycle:
+            preStop:
+              # Give the load balancer a few seconds to stop sending new requests before
+              # Spring starts its graceful shutdown.
+              exec:
+                command: ["sleep", "5"]
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp            # the only writable place: Tomcat needs a temp dir
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi

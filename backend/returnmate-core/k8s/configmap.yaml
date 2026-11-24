@@ -1,0 +1,15 @@
+# Settings that are NOT secret. Safe to commit to git.
+# Secrets (database password, JWT key, encryption key) live in a Secret instead:
+# see secret.example.yaml.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: returnmate-core-config
+  namespace: returnmate
+data:
+  JPA_SHOW_SQL: "false"
+  MANAGEMENT_ENDPOINTS: "health"
+  JWT_EXPIRATION_MS: "900000"
+  TOKEN_KEK_ID: "k1"
+  # Public OAuth client id (not a secret). Leave empty until Google sign-in is set up.
+  GOOGLE_CLIENT_ID: ""

@@ -1,5 +1,6 @@
 package com.returnmate.purchase.controller;
 
+import com.returnmate.purchase.dto.GoogleLoginRequest;
 import com.returnmate.purchase.dto.LoginRequest;
 import com.returnmate.purchase.dto.LoginResponse;
 import com.returnmate.purchase.dto.RegistrationRequest;
@@ -38,4 +39,10 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/google")
+    public ResponseEntity<LoginResponse> loginWithGoogle(
+            @Valid @RequestBody GoogleLoginRequest request) {
+
+        return ResponseEntity.ok(service.loginWithGoogle(request));
+    }
 }

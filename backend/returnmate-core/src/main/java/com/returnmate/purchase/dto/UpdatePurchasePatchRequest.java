@@ -1,9 +1,19 @@
 package com.returnmate.purchase.dto;
 
+import com.returnmate.purchase.entity.ItemCategory;
+import com.returnmate.purchase.entity.ReturnStatus;
 import jakarta.validation.constraints.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/**
+ * Body for PATCH: only the fields present (non-null) are changed.
+ * {@code {"returnStatus": "RETURNED"}} is how the dashboard's "Mark returned" button works.
+ *
+ * <p>Changing the store, category, or dates re-calculates a deadline that came from the
+ * store's policy. A deadline the user entered themselves is left alone.
+ */
 public record UpdatePurchasePatchRequest(
 
         @Size(max = 150)
@@ -19,5 +29,20 @@ public record UpdatePurchasePatchRequest(
         BigDecimal purchaseAmount,
 
         @Pattern(regexp = "^[A-Z]{3}$")
-        String currency
-) {}
+        String currency,
+
+        @Size(max = 100)
+        String orderNumber,
+
+        LocalDate returnDeadline,
+
+        ReturnStatus returnStatus,
+
+        LocalDate deliveryDate,
+
+        @Size(max = 40)
+        String storeCode,
+
+        ItemCategory itemCategory
+) {
+}
