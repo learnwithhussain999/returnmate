@@ -34,3 +34,4 @@ build/
 
 ### Office lock files ###
 ~$*
+.env.local
