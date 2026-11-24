@@ -7,6 +7,7 @@ import org.hibernate.annotations.UuidGenerator;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 @Entity
@@ -36,6 +37,20 @@ public class Purchase {
 
     @Column(nullable = false, length = 3)
     private String currency;
+
+    @Column(name = "order_number", length = 100)
+    private String orderNumber;
+
+    @Column(name = "return_deadline")
+    private LocalDate returnDeadline;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "deadline_source", length = 20)
+    private DeadlineSource deadlineSource;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "return_status", nullable = false, length = 20)
+    private ReturnStatus returnStatus = ReturnStatus.OPEN;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -104,12 +119,87 @@ public class Purchase {
         return updatedAt;
     }
 
+    public String getOrderNumber() {
+        return orderNumber;
+    }
+
+    public LocalDate getReturnDeadline() {
+        return returnDeadline;
+    }
+
+    public DeadlineSource getDeadlineSource() {
+        return deadlineSource;
+    }
+
+    public ReturnStatus getReturnStatus() {
+        return returnStatus;
+    }
+
+    // ------------------------------------------------------------ return tracking
+
+    /**
+     * Set or clear the return deadline. A deadline always comes with its source, and can't
+     * be before the purchase date. (The database checks the same rules; checking here too
+     * gives the user a clear 400 error instead of a constraint violation.)
+     */
+    public void setReturnDeadline(LocalDate deadline, DeadlineSource source) {
+        if ((deadline == null) != (source == null)) {
+            throw new IllegalArgumentException("A return deadline and its source must be set together");
+        }
+        if (deadline != null && deadline.isBefore(purchaseDate)) {
+            throw new IllegalArgumentException("Return deadline cannot be before the purchase date");
+        }
+        this.returnDeadline = deadline;
+        this.deadlineSource = source;
+    }
+
+    public void clearReturnDeadline() {
+        setReturnDeadline(null, null);
+    }
+
+    public void changeReturnStatus(ReturnStatus status) {
+        if (status == null) {
+            throw new IllegalArgumentException("Return status is required");
+        }
+        this.returnStatus = status;
+    }
+
+    public void setOrderNumber(String orderNumber) {
+        this.orderNumber = blankToNull(orderNumber);
+    }
+
+    /**
+     * Days left to return it: 0 = the deadline is today, negative = it has passed.
+     * Null when there is no deadline. Takes "today" as a parameter so tests can pick the date.
+     */
+    public Integer daysUntilDeadline(LocalDate today) {
+        if (returnDeadline == null) {
+            return null;
+        }
+        return Math.toIntExact(ChronoUnit.DAYS.between(today, returnDeadline));
+    }
+
+    /** Still undecided, and the last day to return it has passed. */
+    public boolean isExpired(LocalDate today) {
+        return returnStatus == ReturnStatus.OPEN
+                && returnDeadline != null
+                && returnDeadline.isBefore(today);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
     public void updateDetails(
             String merchantName,
             String productName,
             LocalDate purchaseDate,
             BigDecimal purchaseAmount,
             String currency) {
+
+        if (returnDeadline != null && returnDeadline.isBefore(purchaseDate)) {
+            throw new IllegalArgumentException("Return deadline cannot be before the purchase date");
+        }
 
         this.merchantName = merchantName;
         this.productName = productName;
@@ -122,10 +212,26 @@ public class Purchase {
                 && request.productName() == null
                 && request.purchaseDate() == null
                 && request.purchaseAmount() == null
-                && request.currency() == null) {
+                && request.currency() == null
+                && request.orderNumber() == null
+                && request.returnDeadline() == null
+                && request.returnStatus() == null) {
 
             throw new IllegalArgumentException(
                     "At least one field must be provided for update");
+        }
+        LocalDate newPurchaseDate = request.purchaseDate() != null ? request.purchaseDate() : this.purchaseDate;
+        LocalDate newDeadline = request.returnDeadline() != null ? request.returnDeadline() : this.returnDeadline;
+        if (newDeadline != null && newDeadline.isBefore(newPurchaseDate)) {
+            throw new IllegalArgumentException("Return deadline cannot be before the purchase date");
+        }
+
+        if (request.orderNumber() != null) {
+            setOrderNumber(request.orderNumber());
+        }
+
+        if (request.returnStatus() != null) {
+            changeReturnStatus(request.returnStatus());
         }
         if (request.merchantName() != null) {
             this.merchantName = request.merchantName().trim();
@@ -145,6 +251,11 @@ public class Purchase {
 
         if (request.currency() != null) {
             this.currency = request.currency();
+        }
+
+        if (request.returnDeadline() != null) {
+            // Purchase date (if changed) is already applied above, so the check inside passes.
+            setReturnDeadline(request.returnDeadline(), DeadlineSource.USER_ENTERED);
         }
     }
     public void assignTo(User user) {

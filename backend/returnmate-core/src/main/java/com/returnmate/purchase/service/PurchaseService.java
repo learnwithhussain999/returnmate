@@ -16,6 +16,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Service
@@ -23,12 +25,15 @@ public class PurchaseService {
 
     private final PurchaseRepository purchaseRepository;
     private final UserRepository userRepository;
+    private final Clock clock;
 
     public PurchaseService(
             PurchaseRepository purchaseRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            Clock clock) {
         this.purchaseRepository = purchaseRepository;
         this.userRepository = userRepository;
+        this.clock = clock;
     }
 
     @Transactional
@@ -43,17 +48,18 @@ public class PurchaseService {
 
         Purchase savedPurchase = purchaseRepository.save(purchase);
 
-        return PurchaseMapper.toResponse(savedPurchase);
+        return PurchaseMapper.toResponse(savedPurchase, today());
     }
 
     public Page<PurchaseResponse> getAllPurchases(
             Pageable pageable,
             AuthenticatedUser authenticatedUser) {
 
+        LocalDate today = today();
         return purchaseRepository.findAllByUser_Id(
                 authenticatedUser.userId(),
                 pageable
-        ).map(PurchaseMapper::toResponse);
+        ).map(purchase -> PurchaseMapper.toResponse(purchase, today));
     }
 
     public PurchaseResponse getPurchaseById(
@@ -65,7 +71,7 @@ public class PurchaseService {
                 authenticatedUser.userId()
         );
 
-        return PurchaseMapper.toResponse(purchase);
+        return PurchaseMapper.toResponse(purchase, today());
     }
 
     @Transactional
@@ -79,6 +85,9 @@ public class PurchaseService {
                 authenticatedUser.userId()
         );
 
+        // PUT replaces everything, including the deadline. Clear it first so a new
+        // purchase date isn't checked against the old deadline.
+        purchase.clearReturnDeadline();
         purchase.updateDetails(
                 request.merchantName().trim(),
                 request.productName().trim(),
@@ -86,10 +95,12 @@ public class PurchaseService {
                 request.purchaseAmount(),
                 request.currency()
         );
+        purchase.setOrderNumber(request.orderNumber());
+        PurchaseMapper.applyDeadline(purchase, request);
 
         Purchase updatedPurchase = purchaseRepository.save(purchase);
 
-        return PurchaseMapper.toResponse(updatedPurchase);
+        return PurchaseMapper.toResponse(updatedPurchase, today());
     }
 
     @Transactional
@@ -120,7 +131,11 @@ public class PurchaseService {
 
         Purchase updatedPurchase = purchaseRepository.save(purchase);
 
-        return PurchaseMapper.toResponse(updatedPurchase);
+        return PurchaseMapper.toResponse(updatedPurchase, today());
+    }
+
+    private LocalDate today() {
+        return LocalDate.now(clock);
     }
 
     private User getAuthenticatedUser(
