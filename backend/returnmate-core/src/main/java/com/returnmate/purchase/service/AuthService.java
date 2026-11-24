@@ -3,12 +3,14 @@ package com.returnmate.purchase.service;
 import com.returnmate.purchase.dto.GoogleLoginRequest;
 import com.returnmate.purchase.dto.LoginRequest;
 import com.returnmate.purchase.dto.LoginResponse;
+import com.returnmate.purchase.dto.RefreshTokenRequest;
 import com.returnmate.purchase.dto.RegistrationRequest;
 import com.returnmate.purchase.dto.RegistrationResponse;
 import com.returnmate.purchase.entity.User;
 import com.returnmate.purchase.exceptions.EmailAlreadyExistsException;
 import com.returnmate.purchase.repository.UserRepository;
 import com.returnmate.purchase.security.JwtService;
+import com.returnmate.purchase.security.RefreshTokenService;
 import com.returnmate.purchase.security.google.GoogleIdTokenVerifier;
 import com.returnmate.purchase.security.google.GoogleIdentity;
 import jakarta.transaction.Transactional;
@@ -26,13 +28,15 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final GoogleIdTokenVerifier googleVerifier;
+    private final RefreshTokenService refreshTokens;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
-                       GoogleIdTokenVerifier googleVerifier) {
+                       GoogleIdTokenVerifier googleVerifier, RefreshTokenService refreshTokens) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.googleVerifier = googleVerifier;
+        this.refreshTokens = refreshTokens;
     }
     @Transactional
     public RegistrationResponse register(RegistrationRequest request){
@@ -73,9 +77,28 @@ public class AuthService {
                     "Invalid email or password");
         }
 
-        String token = jwtService.generateToken(user);
+        return signIn(user);
+    }
 
-        return new LoginResponse(token, "Bearer");
+    /** Swap a refresh token for a new access token AND a new refresh token (rotation). */
+    public LoginResponse refresh(RefreshTokenRequest request) {
+        RefreshTokenService.Rotation rotation = refreshTokens.rotate(request.refreshToken());
+        return tokens(rotation.user(), rotation.refreshToken());
+    }
+
+    /** End this sign-in session. The access token still works until it expires (max 15 min). */
+    public void logout(RefreshTokenRequest request) {
+        refreshTokens.revoke(request.refreshToken());
+    }
+
+    /** A new sign-in session: an access token and the first refresh token of a new family. */
+    private LoginResponse signIn(User user) {
+        return tokens(user, refreshTokens.issue(user));
+    }
+
+    private LoginResponse tokens(User user, String refreshToken) {
+        return new LoginResponse(jwtService.generateToken(user), "Bearer",
+                jwtService.getExpirationSeconds(), refreshToken);
     }
 
     /**
@@ -102,7 +125,7 @@ public class AuthService {
                         .map(existing -> link(existing, google.subject()))
                         .orElseGet(() -> userRepository.save(User.fromGoogle(email, google.subject()))));
 
-        return new LoginResponse(jwtService.generateToken(user), "Bearer");
+        return signIn(user);
     }
 
     private User link(User existing, String googleSubject) {

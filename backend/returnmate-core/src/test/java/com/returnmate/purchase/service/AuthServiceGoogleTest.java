@@ -6,6 +6,7 @@ import com.returnmate.purchase.dto.LoginResponse;
 import com.returnmate.purchase.entity.User;
 import com.returnmate.purchase.repository.UserRepository;
 import com.returnmate.purchase.security.JwtService;
+import com.returnmate.purchase.security.RefreshTokenService;
 import com.returnmate.purchase.security.google.GoogleIdTokenVerifier;
 import com.returnmate.purchase.security.google.GoogleIdentity;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,12 +34,13 @@ class AuthServiceGoogleTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtService jwtService;
     @Mock private GoogleIdTokenVerifier googleVerifier;
+    @Mock private RefreshTokenService refreshTokens;
 
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, passwordEncoder, jwtService, googleVerifier);
+        authService = new AuthService(userRepository, passwordEncoder, jwtService, googleVerifier, refreshTokens);
     }
 
     private void googleSays(String email, boolean verified) {
