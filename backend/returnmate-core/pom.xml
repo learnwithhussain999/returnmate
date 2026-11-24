@@ -127,6 +127,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Verifies Google ID tokens (signature via Google's public keys, issuer, audience, expiry).
+		     Version managed by Spring Boot. -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-oauth2-jose</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-jackson</artifactId>
