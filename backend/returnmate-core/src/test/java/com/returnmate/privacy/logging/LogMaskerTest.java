@@ -16,6 +16,7 @@ class LogMaskerTest {
             "jwt                 | token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.sig_abc123XYZ | token [JWT]",
             "google access token | got ya29.a0AfH6SMBx-example_TOKEN for user                 | got [GOOGLE_TOKEN] for user",
             "google refresh      | refresh 1//0gExampleRefreshToken-abc                        | refresh [GOOGLE_TOKEN]",
+            "our refresh token   | rotated rmrt_Q2hhbmdlTWVQbGVhc2VUaGlzSXNGYWtl for user      | rotated [REFRESH_TOKEN] for user",
             "key=value password  | login failed password=hunter2 for id 42                     | login failed password=[REDACTED] for id 42",
             "json client secret  | {\"client_secret\": \"s3cr3t-value\"}                       | {\"client_secret\": \"[REDACTED]\"}",
             "oauth callback code | GET /api/connections/gmail/callback?code=4/0AY0e-g7&state=x | GET /api/connections/gmail/callback?code=[REDACTED]&state=x",

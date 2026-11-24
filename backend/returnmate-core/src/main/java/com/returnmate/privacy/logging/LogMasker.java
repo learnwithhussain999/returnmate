@@ -32,6 +32,8 @@ public final class LogMasker {
             new Rule(Pattern.compile("\\beyJ[A-Za-z0-9_-]{5,}\\.[A-Za-z0-9_-]{5,}\\.[A-Za-z0-9_-]{5,}"), "[JWT]"),
             // Google OAuth access tokens (ya29.…) and refresh tokens (1//…).
             new Rule(Pattern.compile("\\bya29\\.[A-Za-z0-9._-]{10,}"), "[GOOGLE_TOKEN]"),
+            // Our own refresh tokens (RefreshTokenService.PREFIX).
+            new Rule(Pattern.compile("\\brmrt_[A-Za-z0-9_-]{20,}"), "[REFRESH_TOKEN]"),
             new Rule(Pattern.compile("(?<![\\w/])1//[A-Za-z0-9._-]{10,}"), "[GOOGLE_TOKEN]"),
             // Our own encrypted-token format (v1.k1.…): harmless, but no reason to print it.
             new Rule(Pattern.compile("\\bv1\\.[A-Za-z0-9_-]{1,32}\\.[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}"), "[ENCRYPTED_TOKEN]"),

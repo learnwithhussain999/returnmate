@@ -51,6 +51,9 @@ app:
   jwt:
     secret: ${JWT_SECRET_BASE64}
     expiration-ms: ${JWT_EXPIRATION_MS:900000}
+    # How long a refresh token lives (ISO-8601 duration). Each refresh issues a new one,
+    # so a user who opens the app at least once a month stays signed in.
+    refresh-token-ttl: ${REFRESH_TOKEN_TTL:P30D}
   google:
     # OAuth client id from Google Cloud Console (public, not a secret). Empty = Google sign-in off.
     client-id: ${GOOGLE_CLIENT_ID:}

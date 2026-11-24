@@ -3,6 +3,7 @@ package com.returnmate.purchase.controller;
 import com.returnmate.purchase.dto.GoogleLoginRequest;
 import com.returnmate.purchase.dto.LoginRequest;
 import com.returnmate.purchase.dto.LoginResponse;
+import com.returnmate.purchase.dto.RefreshTokenRequest;
 import com.returnmate.purchase.dto.RegistrationRequest;
 import com.returnmate.purchase.dto.RegistrationResponse;
 import com.returnmate.purchase.service.AuthService;
@@ -44,5 +45,20 @@ public class AuthController {
             @Valid @RequestBody GoogleLoginRequest request) {
 
         return ResponseEntity.ok(service.loginWithGoogle(request));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<LoginResponse> refresh(
+            @Valid @RequestBody RefreshTokenRequest request) {
+
+        return ResponseEntity.ok(service.refresh(request));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            @Valid @RequestBody RefreshTokenRequest request) {
+
+        service.logout(request);
+        return ResponseEntity.noContent().build();
     }
 }

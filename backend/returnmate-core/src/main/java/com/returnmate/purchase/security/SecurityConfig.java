@@ -51,7 +51,11 @@ public class SecurityConfig {
                                 HttpMethod.POST,
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
-                                "/api/v1/auth/google"
+                                "/api/v1/auth/google",
+                                // The refresh token IS the credential here: the access token
+                                // has usually already expired when these are called.
+                                "/api/v1/auth/refresh",
+                                "/api/v1/auth/logout"
                         ).permitAll()
 
                         .requestMatchers(
