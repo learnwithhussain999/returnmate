@@ -2,10 +2,20 @@ import type { IsoDate } from '../api/types'
 
 /** Today as "YYYY-MM-DD" in the user's own timezone (toISOString() would use UTC). */
 export function todayIso(): IsoDate {
-  const now = new Date()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${now.getFullYear()}-${month}-${day}`
+  return toIso(new Date())
+}
+
+/** The date n days before today, e.g. isoDaysAgo(1) = yesterday. */
+export function isoDaysAgo(n: number): IsoDate {
+  const date = new Date()
+  date.setDate(date.getDate() - n) // setDate handles month and year boundaries
+  return toIso(date)
+}
+
+function toIso(date: Date): IsoDate {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
 }
 
 /**

@@ -4,13 +4,14 @@ import { deletePurchase, listCategories, listPurchases, listStores, logout, setR
 import type { Category, Purchase, ReturnStatus, Store } from '../api/types'
 import { formatMoney } from '../lib/dates'
 import { AddPurchaseForm } from './AddPurchaseForm'
+import { ChatAddPurchase } from './ChatAddPurchase'
 import { PurchaseRow } from './PurchaseRow'
 
 export function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
   const [purchases, setPurchases] = useState<Purchase[] | null>(null)
   const [stores, setStores] = useState<Store[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [adding, setAdding] = useState(false)
+  const [usingForm, setUsingForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function load() {
@@ -63,15 +64,21 @@ export function Dashboard({ onSignedOut }: { onSignedOut: () => void }) {
         <Stat label="Money you can get back" value={formatMoney(atStake, 'USD')} />
       </section>
 
-      {adding ? (
+      {/* The chat is always here; "Use the form instead" swaps in the classic form. */}
+      {usingForm ? (
         <AddPurchaseForm
           stores={stores}
           categories={categories}
-          onCancel={() => setAdding(false)}
-          onSaved={() => { setAdding(false); void load() }} // reload: keeps the server's sort order
+          onCancel={() => setUsingForm(false)}
+          onSaved={() => { setUsingForm(false); void load() }}
         />
       ) : (
-        <button className="add" onClick={() => setAdding(true)}>+ Add a purchase</button>
+        <ChatAddPurchase
+          stores={stores}
+          categories={categories}
+          onSaved={() => void load()} // reload: keeps the server's sort order
+          onUseForm={() => setUsingForm(true)}
+        />
       )}
 
       {purchases === null && !error && <p className="hint">Loading…</p>}
