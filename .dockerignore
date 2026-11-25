@@ -1,0 +1,7 @@
+# Build context for deploy/web.Dockerfile (the repo root): send only what it needs.
+*
+!frontend/web/
+!deploy/Caddyfile
+frontend/web/node_modules
+frontend/web/dist
+frontend/web/*.tsbuildinfo
