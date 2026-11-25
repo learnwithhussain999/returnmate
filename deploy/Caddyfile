@@ -1,0 +1,31 @@
+# SITE_ADDRESS is e.g. "129-146-10-20.sslip.io". With a real hostname, Caddy gets a
+# Let's Encrypt certificate by itself and redirects http → https. ":80" = plain http (local testing).
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Content-Security-Policy "default-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		-Server
+	}
+
+	# The API. Only /api/* is forwarded, so /actuator and anything else in Spring stays private.
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	# The React app. Built files have a hash in their name, so they can be cached forever;
+	# index.html must always be re-checked so a new deploy shows up straight away.
+	handle {
+		root * /srv
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@page not path /assets/*
+		header @page Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
