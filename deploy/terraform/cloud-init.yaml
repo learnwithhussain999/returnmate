@@ -1,0 +1,11 @@
+#cloud-config
+# Runs once on the VM's first boot. Progress: `sudo tail -f /var/log/cloud-init-output.log`
+
+runcmd:
+  # The VM's own firewall: Oracle's Ubuntu image only allows SSH.
+  - iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+  - iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+  - netfilter-persistent save
+  # Docker, and let the ubuntu user run it without sudo.
+  - curl -fsSL https://get.docker.com | sh
+  - usermod -aG docker ubuntu
