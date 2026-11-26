@@ -1,0 +1,11 @@
+# Downloaded provider plugins
+.terraform/
+# State: Terraform's record of what it created. Holds IPs and IDs; keep it out of git.
+*.tfstate
+*.tfstate.*
+# Your own values
+terraform.tfvars
+crash.log
+# Do commit .terraform.lock.hcl: it pins the exact provider version.
+# Saved plans
+tfplan

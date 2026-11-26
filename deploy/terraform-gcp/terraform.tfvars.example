@@ -1,0 +1,7 @@
+# Copy to terraform.tfvars (git-ignored) and fill in.
+project_id = "returnmate-123456"
+
+# Optional overrides:
+# region           = "us-west1"
+# zone             = "us-west1-b"
+# ssh_allowed_cidr = "203.0.113.7/32"

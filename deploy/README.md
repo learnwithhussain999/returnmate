@@ -51,6 +51,32 @@ Open the printed `https://….sslip.io` URL. Caddy gets the certificate on the f
 
 **Back up `deploy/.env`** somewhere private, such as a password manager. If you lose `TOKEN_KEK_BASE64`, encrypted data can't be read.
 
+## Alternative: Google Cloud free e2-micro (with Terraform)
+Oracle's free Ampere VMs are often "Out of capacity". Google's free tier has one small x86 VM
+(e2-micro, 1 GB RAM) in us-west1, us-central1 or us-east1. `terraform-gcp/` creates it.
+
+1. `brew install hashicorp/tap/terraform` and `brew install --cask google-cloud-sdk`
+2. `gcloud auth login` and `gcloud auth application-default login`; make sure the project has billing linked
+3. `cd terraform-gcp && cp terraform.tfvars.example terraform.tfvars` and set `project_id`
+4. `terraform init && terraform plan -out=tfplan`, read the plan, then `terraform apply tfplan`
+
+Cloud-init adds 2 GB of swap and installs Docker. 1 GB is too little to build the images on the
+VM, so build them on your Mac and copy them over:
+```bash
+# once, on the VM
+git clone https://github.com/learnwithhussain999/returnmate.git && cd returnmate/deploy
+./init-env.sh <public-ip>
+printf 'API_MEM_LIMIT=512m\nAPI_JAVA_OPTS=-XX:MaxRAMPercentage=50 -XX:+ExitOnOutOfMemoryError\n' >> .env
+
+# every deploy, on your Mac
+./ship-images.sh ubuntu@<public-ip>
+```
+Stay free: keep the VM e2-micro with a 30 GB `pd-standard` disk, run only one, and remember
+only ~1 GB/month of outbound traffic is free. The public IP can change if you **stop** the VM
+(rebooting is fine).
+
+`terraform/` is the same idea for Oracle (`./retry-apply.sh` retries until A1 capacity frees up).
+
 ## Everyday commands (run in `~/returnmate/deploy`)
 | Task | Command |
 |---|---|

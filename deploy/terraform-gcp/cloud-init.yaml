@@ -1,0 +1,16 @@
+#cloud-config
+# Runs once on the VM's first boot. Progress: `sudo tail -f /var/log/cloud-init-output.log`
+# No iptables step here: unlike Oracle's image, Google's Ubuntu image doesn't block ports;
+# the VPC firewall rules in network.tf do that job.
+
+# 1 GB of RAM is tight, so add 2 GB of swap: disk used as overflow memory.
+swap:
+  filename: /swapfile
+  size: 2G
+
+runcmd:
+  # Prefer real RAM; only use swap under pressure.
+  - sysctl -w vm.swappiness=10
+  - echo 'vm.swappiness=10' > /etc/sysctl.d/99-swappiness.conf
+  - curl -fsSL https://get.docker.com | sh
+  - usermod -aG docker ubuntu

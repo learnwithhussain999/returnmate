@@ -43,7 +43,10 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       JPA_SHOW_SQL: "false"
       MANAGEMENT_ENDPOINTS: health
-    mem_limit: 1g
+      # Heap = this % of mem_limit. The rest is for the JVM's own memory (classes, threads).
+      # On a 1 GB VM, set in .env: API_MEM_LIMIT=512m and API_JAVA_OPTS=-XX:MaxRAMPercentage=50 -XX:+ExitOnOutOfMemoryError
+      JAVA_TOOL_OPTIONS: ${API_JAVA_OPTS:--XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError}
+    mem_limit: ${API_MEM_LIMIT:-1g}
     # On the frontend network so Caddy can reach it; that network also gives it internet
     # access (needed to fetch Google's sign-in keys).
     networks: [backend, frontend]
